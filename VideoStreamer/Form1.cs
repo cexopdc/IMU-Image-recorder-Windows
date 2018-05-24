@@ -12,7 +12,7 @@ using AForge.Video;
 using AForge.Video.DirectShow;
 using Windows.Devices.Sensors;
 
-namespace VideoStreamer
+namespace IMUFrameRecorder
 {
     public partial class Form1 : Form
     {
@@ -98,18 +98,9 @@ namespace VideoStreamer
                     // Establish the report interval
                     _accelerometer.ReportInterval = _acclDesiredReportInterval;
 
-                    //Window.Current.VisibilityChanged += new WindowVisibilityChangedEventHandler(VisibilityChanged);
                     _accelerometer.ReadingChanged += new Windows.Foundation.TypedEventHandler<Accelerometer, AccelerometerReadingChangedEventArgs>(ReadingChanged);
 
-                    //ScenarioEnableButton.IsEnabled = false;
-                    //ScenarioDisableButton.IsEnabled = true;
                 }
-                else
-                {
-             
-                    //rootPage.NotifyUser("No accelerometer found", NotifyType.StatusMessage);
-                }
-
 
             }
         }
