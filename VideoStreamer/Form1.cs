@@ -11,6 +11,7 @@ using System.Windows.Forms;
 using AForge.Video;
 using AForge.Video.DirectShow;
 using Windows.Devices.Sensors;
+using System.Diagnostics;
 
 namespace IMUFrameRecorder
 {
@@ -22,6 +23,7 @@ namespace IMUFrameRecorder
         private Gyrometer _gyrometer;
         private uint _acclDesiredReportInterval;
         private uint _gyroDesiredReportInterval;
+        private string timeStampFolder;
 
         public Form1()
         {
@@ -90,6 +92,13 @@ namespace IMUFrameRecorder
 
                 // set NewFrame event handler
                 videoSource.NewFrame += new NewFrameEventHandler(VideoSource_NewFrame);
+
+                // make timestamped folder for this record session
+                string parentPath = System.IO.Path.GetDirectoryName(Application.ExecutablePath);
+                timeStampFolder = nanoTime().ToString();
+                string folderPath = System.IO.Path.Combine(parentPath, timeStampFolder);
+                System.IO.Directory.CreateDirectory(folderPath);
+
                 videoSource.Start();
 
                 /*****************  IMU handler  ******************************/
@@ -118,10 +127,17 @@ namespace IMUFrameRecorder
 
         private void VideoSource_NewFrame(object sender, NewFrameEventArgs eventArgs)
         {
-            Bitmap myImage = (Bitmap)eventArgs.Frame.Clone();
-            pictureBox1.Image = myImage;
-            //string strGrabFileName = String.Format("C:\\My_folder\\Snapshot_{0:yyyyMMdd_hhmmss.fff}.bmp", DateTime.Now);
-            //myImage.Save(strGrabFileName, System.Drawing.Imaging.ImageFormat.Bmp);
+            Bitmap myImageForBox = (Bitmap)eventArgs.Frame.Clone(); ;
+            Bitmap myImageForPNG = (Bitmap)eventArgs.Frame.Clone();
+            
+            pictureBox1.Image = myImageForBox;
+
+            string parentPath = System.IO.Path.GetDirectoryName(Application.ExecutablePath);
+            string folderPath = System.IO.Path.Combine(parentPath,timeStampFolder);
+            string timeStamp = nanoTime().ToString();
+            //System.IO.Directory.CreateDirectory(folderPath);
+            string fileName = System.IO.Path.Combine(folderPath, timeStamp + ".png");
+            myImageForPNG.Save(fileName, System.Drawing.Imaging.ImageFormat.Png);
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
@@ -131,5 +147,16 @@ namespace IMUFrameRecorder
                 videoSource.Stop();
             }
         }
+
+        private static long nanoTime()
+        {
+            long nano = 10000L * Stopwatch.GetTimestamp();
+            nano /= TimeSpan.TicksPerMillisecond;
+            nano *= 100L;
+            return nano;
+        }
+
+
+
     }
 }
