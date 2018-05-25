@@ -112,7 +112,7 @@ namespace IMUFrameRecorder
                     // create csv file for this record session
                     String fileName = "imu0.csv";
                     String filePath = System.IO.Path.Combine(folderPath, fileName);
-                    writerCSV = new StreamWriter(new FileStream(filePath, FileMode.Create,FileAccess.Write));
+                    writerCSV = new StreamWriter(new FileStream(filePath, FileMode.Create,FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true));
                     writerCSV.WriteLine("timestamp" + "," + "omega_x" + "," + "omega_y" + "," + "omega_z" + "," + "alpha_x" + "," + "alpha_y" + "," + "alpha_z");
 
                     // Establish the report interval
@@ -124,7 +124,7 @@ namespace IMUFrameRecorder
             }
         }
 
-        private void ReadingChanged(object sender, AccelerometerReadingChangedEventArgs e)
+        private async void ReadingChanged(object sender, AccelerometerReadingChangedEventArgs e)
         {
             AccelerometerReading readingAccl = e.Reading;
             GyrometerReading readingGyro = _gyrometer.GetCurrentReading();
@@ -134,7 +134,7 @@ namespace IMUFrameRecorder
             //textBox1.AppendText(Environment.NewLine);
             //textBox1.AppendText(string.Format("Gyro - x: {0}, y: {1}, z: {2}", readingGyro.AngularVelocityX, readingGyro.AngularVelocityY, readingGyro.AngularVelocityY));
             string timeStamp = nanoTime().ToString();
-            writerCSV.WriteLine(timeStamp + "," 
+            await writerCSV.WriteLineAsync(timeStamp + "," 
                 + readingGyro.AngularVelocityX + "," + readingGyro.AngularVelocityY + "," + readingGyro.AngularVelocityZ 
                 + "," + readingAccl.AccelerationX + "," + readingAccl.AccelerationY + "," + readingAccl.AccelerationZ);
         }
