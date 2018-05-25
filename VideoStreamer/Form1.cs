@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -24,6 +25,7 @@ namespace IMUFrameRecorder
         private uint _acclDesiredReportInterval;
         private uint _gyroDesiredReportInterval;
         private string timeStampFolder;
+        private StreamWriter writerCSV;
 
         public Form1()
         {
@@ -66,7 +68,10 @@ namespace IMUFrameRecorder
                 pictureBox1.Invalidate();
 
                 if (_accelerometer != null)
+                {
                     _accelerometer.ReadingChanged -= new Windows.Foundation.TypedEventHandler<Accelerometer, AccelerometerReadingChangedEventArgs>(ReadingChanged);
+                    writerCSV.Close();
+                }
             }
             else
             {
@@ -104,9 +109,14 @@ namespace IMUFrameRecorder
                 /*****************  IMU handler  ******************************/
                 if (_accelerometer != null)
                 {
+                    // create csv file for this record session
+                    String fileName = "imu0.csv";
+                    String filePath = System.IO.Path.Combine(folderPath, fileName);
+                    writerCSV = new StreamWriter(new FileStream(filePath, FileMode.Create,FileAccess.Write));
+                    writerCSV.WriteLine("timestamp" + "," + "omega_x" + "," + "omega_y" + "," + "omega_z" + "," + "alpha_x" + "," + "alpha_y" + "," + "alpha_z");
+
                     // Establish the report interval
                     _accelerometer.ReportInterval = _acclDesiredReportInterval;
-
                     _accelerometer.ReadingChanged += new Windows.Foundation.TypedEventHandler<Accelerometer, AccelerometerReadingChangedEventArgs>(ReadingChanged);
 
                 }
@@ -118,11 +128,15 @@ namespace IMUFrameRecorder
         {
             AccelerometerReading readingAccl = e.Reading;
             GyrometerReading readingGyro = _gyrometer.GetCurrentReading();
-            textBox1.Clear();
+            //textBox1.Clear();
             //textBox1.Text = Convert.ToString(_acclDesiredReportInterval);
-            textBox1.Text = string.Format("Acceleration - x: {0}, y: {1}, z: {2}", readingAccl.AccelerationX, readingAccl.AccelerationY, readingAccl.AccelerationZ);
-            textBox1.AppendText(Environment.NewLine);
-            textBox1.AppendText(string.Format("Gyro - x: {0}, y: {1}, z: {2}", readingGyro.AngularVelocityX, readingGyro.AngularVelocityY, readingGyro.AngularVelocityY));
+            //textBox1.Text = string.Format("Acceleration - x: {0}, y: {1}, z: {2}", readingAccl.AccelerationX, readingAccl.AccelerationY, readingAccl.AccelerationZ);
+            //textBox1.AppendText(Environment.NewLine);
+            //textBox1.AppendText(string.Format("Gyro - x: {0}, y: {1}, z: {2}", readingGyro.AngularVelocityX, readingGyro.AngularVelocityY, readingGyro.AngularVelocityY));
+            string timeStamp = nanoTime().ToString();
+            writerCSV.WriteLine(timeStamp + "," 
+                + readingGyro.AngularVelocityX + "," + readingGyro.AngularVelocityY + "," + readingGyro.AngularVelocityZ 
+                + "," + readingAccl.AccelerationX + "," + readingAccl.AccelerationY + "," + readingAccl.AccelerationZ);
         }
 
         private void VideoSource_NewFrame(object sender, NewFrameEventArgs eventArgs)
