@@ -164,9 +164,7 @@ namespace IMUFrameRecorder
 
         private static long nanoTime()
         {
-            long nano = 10000L * Stopwatch.GetTimestamp();
-            nano /= TimeSpan.TicksPerMillisecond;
-            nano *= 100L;
+            long nano = Stopwatch.GetTimestamp() * (1000000000L / Stopwatch.Frequency);
             return nano;
         }
 
