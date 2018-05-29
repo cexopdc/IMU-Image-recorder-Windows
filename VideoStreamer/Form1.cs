@@ -51,6 +51,7 @@ namespace IMUFrameRecorder
                 _acclDesiredReportInterval = _accelerometer.MinimumReportInterval;
                 textBox1.Text = "IMUs are available on this device!";
                 textBox1.BackColor = Color.Green;
+                InitializeTimer();
             }
             else {              
                 textBox1.Text = "No IMU available on this device!";
@@ -69,7 +70,10 @@ namespace IMUFrameRecorder
 
                 if (_accelerometer != null)
                 {
-                    _accelerometer.ReadingChanged -= new Windows.Foundation.TypedEventHandler<Accelerometer, AccelerometerReadingChangedEventArgs>(ReadingChanged);
+                    // ReadingChanged based
+                    //_accelerometer.ReadingChanged -= new Windows.Foundation.TypedEventHandler<Accelerometer, AccelerometerReadingChangedEventArgs>(ReadingChanged);
+                    // Timer based
+                    IMUTimer.Enabled = false;
                     writerCSV.Close();
                 }
             }
@@ -86,7 +90,7 @@ namespace IMUFrameRecorder
                         //Search for the highest resolution
                         for (int i = 0; i < videoSource.VideoCapabilities.Length; i++)
                         {
-                            if (videoSource.VideoCapabilities[i].FrameSize.Width > Convert.ToInt32(highestSolution.Split(';')[0]))
+                            if (videoSource.VideoCapabilities[i].FrameSize.Width > Convert.ToInt32(highestSolution.Split(';')[0]) && videoSource.VideoCapabilities[i].AverageFrameRate >= 20)
                                 highestSolution = videoSource.VideoCapabilities[i].FrameSize.Width.ToString() + ";" + i.ToString();
                         }
                         //Set the highest resolution as active
@@ -117,8 +121,13 @@ namespace IMUFrameRecorder
 
                     // Establish the report interval
                     _accelerometer.ReportInterval = _acclDesiredReportInterval;
-                    _accelerometer.ReadingChanged += new Windows.Foundation.TypedEventHandler<Accelerometer, AccelerometerReadingChangedEventArgs>(ReadingChanged);
+                    _gyrometer.ReportInterval = _gyroDesiredReportInterval;
 
+                    // based on ReadingChanged
+                    //_accelerometer.ReadingChanged += new Windows.Foundation.TypedEventHandler<Accelerometer, AccelerometerReadingChangedEventArgs>(ReadingChanged);
+
+                    // based on periodical timer
+                    IMUTimer.Enabled = true;
                 }
 
             }
@@ -142,6 +151,16 @@ namespace IMUFrameRecorder
             string timeStamp = nanoTime().ToString();
             writerCSV.WriteLine(timeStamp + "," 
                 + readingGyro.AngularVelocityX + "," + readingGyro.AngularVelocityY + "," + readingGyro.AngularVelocityZ 
+                + "," + readingAccl.AccelerationX + "," + readingAccl.AccelerationY + "," + readingAccl.AccelerationZ);
+        }
+
+        private void IMUTimer_Tick(object sender, EventArgs e)
+        {
+            AccelerometerReading readingAccl = _accelerometer.GetCurrentReading();
+            GyrometerReading readingGyro = _gyrometer.GetCurrentReading();
+            string timeStamp = nanoTime().ToString();
+            writerCSV.WriteLine(timeStamp + ","
+                + readingGyro.AngularVelocityX + "," + readingGyro.AngularVelocityY + "," + readingGyro.AngularVelocityZ
                 + "," + readingAccl.AccelerationX + "," + readingAccl.AccelerationY + "," + readingAccl.AccelerationZ);
         }
 
@@ -178,6 +197,16 @@ namespace IMUFrameRecorder
             return nano;
         }
 
+        private void InitializeTimer()
+        {
+            // Call this procedure when the application starts.  
+            // Set to 1 second.  
+            IMUTimer.Interval = (int)_acclDesiredReportInterval; // makes the interval minimum
+            IMUTimer.Tick += new EventHandler(IMUTimer_Tick);
+
+            // Don't enable timer just yet.  
+            IMUTimer.Enabled = false;
+        }
 
 
     }
