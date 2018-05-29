@@ -124,24 +124,30 @@ namespace IMUFrameRecorder
             }
         }
 
-        private async void ReadingChanged(object sender, AccelerometerReadingChangedEventArgs e)
+        private void ReadingChanged(object sender, AccelerometerReadingChangedEventArgs e)
         {
             AccelerometerReading readingAccl = e.Reading;
             GyrometerReading readingGyro = _gyrometer.GetCurrentReading();
-            //textBox1.Clear();
-            //textBox1.Text = Convert.ToString(_acclDesiredReportInterval);
-            //textBox1.Text = string.Format("Acceleration - x: {0}, y: {1}, z: {2}", readingAccl.AccelerationX, readingAccl.AccelerationY, readingAccl.AccelerationZ);
-            //textBox1.AppendText(Environment.NewLine);
-            //textBox1.AppendText(string.Format("Gyro - x: {0}, y: {1}, z: {2}", readingGyro.AngularVelocityX, readingGyro.AngularVelocityY, readingGyro.AngularVelocityY));
+
+            /*
+            textBox1.Invoke((Action)delegate
+            {
+                textBox1.Clear();
+                //textBox1.Text = Convert.ToString(_acclDesiredReportInterval);
+                textBox1.Text = string.Format("Acceleration - x: {0}, y: {1}, z: {2}", readingAccl.AccelerationX, readingAccl.AccelerationY, readingAccl.AccelerationZ);
+                textBox1.AppendText(Environment.NewLine);
+                textBox1.AppendText(string.Format("Gyro - x: {0}, y: {1}, z: {2}", readingGyro.AngularVelocityX, readingGyro.AngularVelocityY, readingGyro.AngularVelocityY));
+            });
+            */
             string timeStamp = nanoTime().ToString();
-            await writerCSV.WriteLineAsync(timeStamp + "," 
+            writerCSV.WriteLine(timeStamp + "," 
                 + readingGyro.AngularVelocityX + "," + readingGyro.AngularVelocityY + "," + readingGyro.AngularVelocityZ 
                 + "," + readingAccl.AccelerationX + "," + readingAccl.AccelerationY + "," + readingAccl.AccelerationZ);
         }
 
         private void VideoSource_NewFrame(object sender, NewFrameEventArgs eventArgs)
         {
-            Bitmap myImageForBox = (Bitmap)eventArgs.Frame.Clone(); ;
+            Bitmap myImageForBox = (Bitmap)eventArgs.Frame.Clone();
             Bitmap myImageForPNG = (Bitmap)eventArgs.Frame.Clone();
             
             pictureBox1.Image = myImageForBox;
@@ -160,6 +166,10 @@ namespace IMUFrameRecorder
             {
                 videoSource.Stop();
             }
+            if (writerCSV.BaseStream != null) {
+                writerCSV.Close();
+            }
+
         }
 
         private static long nanoTime()
