@@ -26,6 +26,8 @@ namespace IMUFrameRecorder
         private uint _gyroDesiredReportInterval;
         private string timeStampFolder;
         private StreamWriter writerCSV;
+        private bool DEBUG = true;
+        private System.Threading.Timer IMUTimer;
 
         public Form1()
         {
@@ -58,6 +60,7 @@ namespace IMUFrameRecorder
                 textBox1.BackColor = Color.Red;
             }
             if (_gyrometer != null) _gyroDesiredReportInterval = _gyrometer.MinimumReportInterval;
+            //if (DEBUG) InitializeTimer();
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -68,13 +71,14 @@ namespace IMUFrameRecorder
                 pictureBox1.Image = null;
                 pictureBox1.Invalidate();
 
-                if (_accelerometer != null)
+                if (_accelerometer != null || DEBUG)
                 {
                     // ReadingChanged based
                     //_accelerometer.ReadingChanged -= new Windows.Foundation.TypedEventHandler<Accelerometer, AccelerometerReadingChangedEventArgs>(ReadingChanged);
                     // Timer based
-                    IMUTimer.Enabled = false;
+                    //IMUTimer.Enabled = false;
                     writerCSV.Close();
+                    IMUTimer.Dispose();
                 }
             }
             else
@@ -125,11 +129,26 @@ namespace IMUFrameRecorder
 
                     // based on ReadingChanged
                     //_accelerometer.ReadingChanged += new Windows.Foundation.TypedEventHandler<Accelerometer, AccelerometerReadingChangedEventArgs>(ReadingChanged);
+                    //_accelerometer.ReadingChanged += (s1,e1) =>  ReadingChanged(s1,e1);
+
+                    _accelerometer.ReadingChanged += 
+                        (senderObj, evt) =>
+                        new System.Threading.Thread(() => ReadingChanged(senderObj, evt)).Start();
 
                     // based on periodical timer
-                    IMUTimer.Enabled = true;
+                    //IMUTimer.Enabled = true;
                 }
+                if (DEBUG)
+                {
+                    // create csv file for this record session
+                    String fileName = "imu0.csv";
+                    String filePath = System.IO.Path.Combine(folderPath, fileName);
+                    writerCSV = new StreamWriter(new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true));
+                    writerCSV.WriteLine("timestamp" + "," + "omega_x" + "," + "omega_y" + "," + "omega_z" + "," + "alpha_x" + "," + "alpha_y" + "," + "alpha_z");
 
+                    //IMUTimer.Enabled = true;
+                    InitializeTimer();
+                }
             }
         }
 
@@ -154,14 +173,23 @@ namespace IMUFrameRecorder
                 + "," + readingAccl.AccelerationX + "," + readingAccl.AccelerationY + "," + readingAccl.AccelerationZ);
         }
 
-        private void IMUTimer_Tick(object sender, EventArgs e)
+        private void IMUTimer_Tick(object StateObject)
         {
-            AccelerometerReading readingAccl = _accelerometer.GetCurrentReading();
-            GyrometerReading readingGyro = _gyrometer.GetCurrentReading();
             string timeStamp = nanoTime().ToString();
-            writerCSV.WriteLine(timeStamp + ","
-                + readingGyro.AngularVelocityX + "," + readingGyro.AngularVelocityY + "," + readingGyro.AngularVelocityZ
-                + "," + readingAccl.AccelerationX + "," + readingAccl.AccelerationY + "," + readingAccl.AccelerationZ);
+
+            if (DEBUG)
+            {
+                writerCSV.WriteLine(timeStamp + "," + "omega_x" + "," + "omega_y" + "," + "omega_z" + "," + "alpha_x" + "," + "alpha_y" + "," + "alpha_z");
+            }
+            else
+            {
+                AccelerometerReading readingAccl = _accelerometer.GetCurrentReading();
+                GyrometerReading readingGyro = _gyrometer.GetCurrentReading();
+
+                writerCSV.WriteLine(timeStamp + ","
+                    + readingGyro.AngularVelocityX + "," + readingGyro.AngularVelocityY + "," + readingGyro.AngularVelocityZ
+                    + "," + readingAccl.AccelerationX + "," + readingAccl.AccelerationY + "," + readingAccl.AccelerationZ);
+            }
         }
 
         private void VideoSource_NewFrame(object sender, NewFrameEventArgs eventArgs)
@@ -176,7 +204,7 @@ namespace IMUFrameRecorder
             string timeStamp = nanoTime().ToString();
             //System.IO.Directory.CreateDirectory(folderPath);
             string fileName = System.IO.Path.Combine(folderPath, timeStamp + ".png");
-            myImageForPNG.Save(fileName, System.Drawing.Imaging.ImageFormat.Png);
+            //myImageForPNG.Save(fileName, System.Drawing.Imaging.ImageFormat.Png);
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
@@ -201,11 +229,14 @@ namespace IMUFrameRecorder
         {
             // Call this procedure when the application starts.  
             // Set to 1 second.  
-            IMUTimer.Interval = (int)_acclDesiredReportInterval; // makes the interval minimum
-            IMUTimer.Tick += new EventHandler(IMUTimer_Tick);
+            int timerInterv;
+            if (DEBUG) { timerInterv = 1; }
+            else
+            {
+                timerInterv = (int)_acclDesiredReportInterval; // makes the interval minimum
+            }
+            IMUTimer = new System.Threading.Timer(IMUTimer_Tick, null, 0, timerInterv);
 
-            // Don't enable timer just yet.  
-            IMUTimer.Enabled = false;
         }
 
 
