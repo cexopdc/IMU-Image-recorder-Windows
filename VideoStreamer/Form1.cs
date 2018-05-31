@@ -13,6 +13,7 @@ using AForge.Video;
 using AForge.Video.DirectShow;
 using Windows.Devices.Sensors;
 using System.Diagnostics;
+using System.Threading;
 
 namespace IMUFrameRecorder
 {
@@ -26,7 +27,7 @@ namespace IMUFrameRecorder
         private uint _gyroDesiredReportInterval;
         private string timeStampFolder;
         private StreamWriter writerCSV;
-        private bool DEBUG = true;
+        private bool DEBUG = false;
         private System.Threading.Timer IMUTimer;
 
         public Form1()
@@ -45,7 +46,9 @@ namespace IMUFrameRecorder
             comboBox1.SelectedIndex = 0;
 
             videoSource = new VideoCaptureDevice();
-            _accelerometer = Accelerometer.GetDefault();
+            //Accelerometer defaultAcc = Accelerometer.GetDefault();
+            _accelerometer = Accelerometer.GetDefault(AccelerometerReadingType.Standard); // set to standard instead of linear acceleration!!!
+            //Accelerometer tmp = Accelerometer.GetDefault(AccelerometerReadingType.Linear);
             _gyrometer = Gyrometer.GetDefault();
             textBox1.Clear();
             if (_accelerometer != null)
@@ -53,7 +56,7 @@ namespace IMUFrameRecorder
                 _acclDesiredReportInterval = _accelerometer.MinimumReportInterval;
                 textBox1.Text = "IMUs are available on this device!";
                 textBox1.BackColor = Color.Green;
-                InitializeTimer();
+                //InitializeTimer();
             }
             else {              
                 textBox1.Text = "No IMU available on this device!";
@@ -74,11 +77,11 @@ namespace IMUFrameRecorder
                 if (_accelerometer != null || DEBUG)
                 {
                     // ReadingChanged based
-                    //_accelerometer.ReadingChanged -= new Windows.Foundation.TypedEventHandler<Accelerometer, AccelerometerReadingChangedEventArgs>(ReadingChanged);
+                    _accelerometer.ReadingChanged -= new Windows.Foundation.TypedEventHandler<Accelerometer, AccelerometerReadingChangedEventArgs>(ReadingChanged);
                     // Timer based
                     //IMUTimer.Enabled = false;
                     writerCSV.Close();
-                    IMUTimer.Dispose();
+                    //IMUTimer.Dispose();
                 }
             }
             else
@@ -94,7 +97,11 @@ namespace IMUFrameRecorder
                         //Search for the highest resolution
                         for (int i = 0; i < videoSource.VideoCapabilities.Length; i++)
                         {
-                            if (videoSource.VideoCapabilities[i].FrameSize.Width > Convert.ToInt32(highestSolution.Split(';')[0]) && videoSource.VideoCapabilities[i].AverageFrameRate >= 20)
+                            if (
+                                videoSource.VideoCapabilities[i].FrameSize.Width > Convert.ToInt32(highestSolution.Split(';')[0]) 
+                                && videoSource.VideoCapabilities[i].AverageFrameRate >= 20 
+                                && videoSource.VideoCapabilities[i].FrameSize.Height < 500
+                                )
                                 highestSolution = videoSource.VideoCapabilities[i].FrameSize.Width.ToString() + ";" + i.ToString();
                         }
                         //Set the highest resolution as active
@@ -103,8 +110,14 @@ namespace IMUFrameRecorder
                 }
                 catch { }
 
+                Thread threadCamera = new Thread(() => CameraThread())
+                {
+                    Priority = ThreadPriority.Highest
+                };
+                threadCamera.Start();
+
                 // set NewFrame event handler
-                videoSource.NewFrame += new NewFrameEventHandler(VideoSource_NewFrame);
+                //videoSource.NewFrame += new NewFrameEventHandler(VideoSource_NewFrame);
 
                 // make timestamped folder for this record session
                 string parentPath = System.IO.Path.GetDirectoryName(Application.ExecutablePath);
@@ -127,13 +140,21 @@ namespace IMUFrameRecorder
                     _accelerometer.ReportInterval = _acclDesiredReportInterval;
                     _gyrometer.ReportInterval = _gyroDesiredReportInterval;
 
+                    Thread threadIMU = new Thread(() => IMUThread())
+                    {
+                        Priority = ThreadPriority.Highest
+                    };
+                    threadIMU.Start();
+
+               
+
                     // based on ReadingChanged
                     //_accelerometer.ReadingChanged += new Windows.Foundation.TypedEventHandler<Accelerometer, AccelerometerReadingChangedEventArgs>(ReadingChanged);
                     //_accelerometer.ReadingChanged += (s1,e1) =>  ReadingChanged(s1,e1);
 
-                    _accelerometer.ReadingChanged += 
-                        (senderObj, evt) =>
-                        new System.Threading.Thread(() => ReadingChanged(senderObj, evt)).Start();
+                    //_accelerometer.ReadingChanged += 
+                    //    (senderObj, evt) =>
+                    //    new System.Threading.Thread(() => ReadingChanged(senderObj, evt)).Start();
 
                     // based on periodical timer
                     //IMUTimer.Enabled = true;
@@ -152,7 +173,18 @@ namespace IMUFrameRecorder
             }
         }
 
-        private void ReadingChanged(object sender, AccelerometerReadingChangedEventArgs e)
+    private void CameraThread() {
+        // set NewFrame event handler
+        videoSource.NewFrame += new NewFrameEventHandler(VideoSource_NewFrame);
+    }
+
+    private void IMUThread() {
+        _accelerometer.ReadingChanged += new Windows.Foundation.TypedEventHandler<Accelerometer, AccelerometerReadingChangedEventArgs>(ReadingChanged);
+    }
+
+
+
+    private void ReadingChanged(object sender, AccelerometerReadingChangedEventArgs e)
         {
             AccelerometerReading readingAccl = e.Reading;
             GyrometerReading readingGyro = _gyrometer.GetCurrentReading();
@@ -199,12 +231,23 @@ namespace IMUFrameRecorder
             
             pictureBox1.Image = myImageForBox;
 
+            Thread threadFrameSave = new Thread(() => FrameSaveThread(myImageForPNG))
+            {
+                Priority = ThreadPriority.Highest
+            };
+            threadFrameSave.Start();
+            
+        }
+
+        private void FrameSaveThread(Bitmap myImageForPNG)
+        {
             string parentPath = System.IO.Path.GetDirectoryName(Application.ExecutablePath);
-            string folderPath = System.IO.Path.Combine(parentPath,timeStampFolder);
+            string folderPath = System.IO.Path.Combine(parentPath, timeStampFolder);
             string timeStamp = nanoTime().ToString();
             //System.IO.Directory.CreateDirectory(folderPath);
             string fileName = System.IO.Path.Combine(folderPath, timeStamp + ".png");
-            //myImageForPNG.Save(fileName, System.Drawing.Imaging.ImageFormat.Png);
+
+            myImageForPNG.Save(fileName, System.Drawing.Imaging.ImageFormat.Png);
         }
 
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
