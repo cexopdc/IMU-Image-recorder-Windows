@@ -29,6 +29,8 @@ namespace IMUFrameRecorder
         private StreamWriter writerCSV;
         private bool DEBUG = false;
         private System.Threading.Timer IMUTimer;
+        private GyrometerReading readingGyro;
+        private AccelerometerReading readingAccl;
 
         public Form1()
         {
@@ -77,7 +79,8 @@ namespace IMUFrameRecorder
                 if (_accelerometer != null || DEBUG)
                 {
                     // ReadingChanged based
-                    _accelerometer.ReadingChanged -= new Windows.Foundation.TypedEventHandler<Accelerometer, AccelerometerReadingChangedEventArgs>(ReadingChanged);
+                    _accelerometer.ReadingChanged -= AcclReadingChanged;
+                    _gyrometer.ReadingChanged -= GyroReadingChanged;
                     // Timer based
                     //IMUTimer.Enabled = false;
                     writerCSV.Close();
@@ -140,21 +143,10 @@ namespace IMUFrameRecorder
                     _accelerometer.ReportInterval = _acclDesiredReportInterval;
                     _gyrometer.ReportInterval = _gyroDesiredReportInterval;
 
-                    Thread threadIMU = new Thread(() => IMUThread())
-                    {
-                        Priority = ThreadPriority.Highest
-                    };
-                    threadIMU.Start();
-
-               
 
                     // based on ReadingChanged
-                    //_accelerometer.ReadingChanged += new Windows.Foundation.TypedEventHandler<Accelerometer, AccelerometerReadingChangedEventArgs>(ReadingChanged);
-                    //_accelerometer.ReadingChanged += (s1,e1) =>  ReadingChanged(s1,e1);
-
-                    //_accelerometer.ReadingChanged += 
-                    //    (senderObj, evt) =>
-                    //    new System.Threading.Thread(() => ReadingChanged(senderObj, evt)).Start();
+                    _accelerometer.ReadingChanged += AcclReadingChanged;
+                    _gyrometer.ReadingChanged += GyroReadingChanged;
 
                     // based on periodical timer
                     //IMUTimer.Enabled = true;
@@ -178,16 +170,10 @@ namespace IMUFrameRecorder
         videoSource.NewFrame += new NewFrameEventHandler(VideoSource_NewFrame);
     }
 
-    private void IMUThread() {
-        _accelerometer.ReadingChanged += new Windows.Foundation.TypedEventHandler<Accelerometer, AccelerometerReadingChangedEventArgs>(ReadingChanged);
-    }
-
-
-
-    private void ReadingChanged(object sender, AccelerometerReadingChangedEventArgs e)
+    private void AcclReadingChanged(object sender, AccelerometerReadingChangedEventArgs e)
         {
-            AccelerometerReading readingAccl = e.Reading;
-            GyrometerReading readingGyro = _gyrometer.GetCurrentReading();
+            readingAccl = e.Reading;
+            //GyrometerReading readingGyro = _gyrometer.GetCurrentReading();
 
             /*
             textBox1.Invoke((Action)delegate
@@ -199,10 +185,23 @@ namespace IMUFrameRecorder
                 textBox1.AppendText(string.Format("Gyro - x: {0}, y: {1}, z: {2}", readingGyro.AngularVelocityX, readingGyro.AngularVelocityY, readingGyro.AngularVelocityY));
             });
             */
+            //string timeStamp = nanoTime().ToString();
+            //writerCSV.WriteLine(timeStamp + "," 
+            //    + readingGyro.AngularVelocityX + "," + readingGyro.AngularVelocityY + "," + readingGyro.AngularVelocityZ 
+            //    + "," + readingAccl.AccelerationX + "," + readingAccl.AccelerationY + "," + readingAccl.AccelerationZ);
+        }
+
+        private void GyroReadingChanged(object sender, GyrometerReadingChangedEventArgs e)
+        {
+            readingGyro = e.Reading;
+            //GyrometerReading readingGyro = _gyrometer.GetCurrentReading();
+
             string timeStamp = nanoTime().ToString();
-            writerCSV.WriteLine(timeStamp + "," 
-                + readingGyro.AngularVelocityX + "," + readingGyro.AngularVelocityY + "," + readingGyro.AngularVelocityZ 
+            writerCSV.WriteLine(timeStamp + ","
+                + readingGyro.AngularVelocityX + "," + readingGyro.AngularVelocityY + "," + readingGyro.AngularVelocityZ
                 + "," + readingAccl.AccelerationX + "," + readingAccl.AccelerationY + "," + readingAccl.AccelerationZ);
+            //writerCSV.WriteLine(timeStamp + ","
+            //    + readingAccl.AccelerationX + "," + readingAccl.AccelerationY + "," + readingAccl.AccelerationZ);
         }
 
         private void IMUTimer_Tick(object StateObject)

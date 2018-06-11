@@ -12,6 +12,10 @@ namespace ConsoleIMURecorder
     class Program
     {
         static StreamWriter writerCSV;
+        static Accelerometer _accelerometer;
+        static Gyrometer _gyrometer;
+        static GyrometerReading readingGyro;
+        static AccelerometerReading readingAccl;
 
         private static long nanoTime()
         {
@@ -19,20 +23,36 @@ namespace ConsoleIMURecorder
             return nano;
         }
 
-        private static void ReadingChanged(object sender, AccelerometerReadingChangedEventArgs e)
+        private static void AcclReadingChanged(object sender, AccelerometerReadingChangedEventArgs e)
         {
-            AccelerometerReading readingAccl = e.Reading;
+            readingAccl = e.Reading;
+            //GyrometerReading readingGyro = _gyrometer.GetCurrentReading();
+
+            //string timeStamp = nanoTime().ToString();
+            //writerCSV.WriteLine(timeStamp + ","
+            //    + readingGyro.AngularVelocityX + "," + readingGyro.AngularVelocityY + "," + readingGyro.AngularVelocityZ
+            //    + "," + readingAccl.AccelerationX + "," + readingAccl.AccelerationY + "," + readingAccl.AccelerationZ);
+            //writerCSV.WriteLine(timeStamp + ","
+            //    + readingAccl.AccelerationX + "," + readingAccl.AccelerationY + "," + readingAccl.AccelerationZ);
+        }
+
+        private static void GyroReadingChanged(object sender, GyrometerReadingChangedEventArgs e)
+        {
+            readingGyro = e.Reading;
             //GyrometerReading readingGyro = _gyrometer.GetCurrentReading();
 
             string timeStamp = nanoTime().ToString();
             writerCSV.WriteLine(timeStamp + ","
-                + readingAccl.AccelerationX + "," + readingAccl.AccelerationY + "," + readingAccl.AccelerationZ);
+                + readingGyro.AngularVelocityX + "," + readingGyro.AngularVelocityY + "," + readingGyro.AngularVelocityZ
+                + "," + readingAccl.AccelerationX + "," + readingAccl.AccelerationY + "," + readingAccl.AccelerationZ);
+            //writerCSV.WriteLine(timeStamp + ","
+            //    + readingAccl.AccelerationX + "," + readingAccl.AccelerationY + "," + readingAccl.AccelerationZ);
         }
 
         static void Main(string[] args)
         {
             Accelerometer _accelerometer = Accelerometer.GetDefault(AccelerometerReadingType.Standard); ;
-            Gyrometer _gyrometer = Gyrometer.GetDefault();
+            _gyrometer = Gyrometer.GetDefault();
             uint _acclDesiredReportInterval = _accelerometer.MinimumReportInterval;
             uint _gyroDesiredReportInterval = _gyrometer.MinimumReportInterval;
             
@@ -45,8 +65,8 @@ namespace ConsoleIMURecorder
             String fileName = nanoTime() + ".csv";
             String filePath = System.IO.Path.Combine(folderPath, fileName);
             writerCSV = new StreamWriter(new FileStream(new Uri(filePath).LocalPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true));
-            //writerCSV.WriteLine("timestamp" + "," + "omega_x" + "," + "omega_y" + "," + "omega_z" + "," + "alpha_x" + "," + "alpha_y" + "," + "alpha_z");
-            writerCSV.WriteLine("timestamp" + "," +  "alpha_x" + "," + "alpha_y" + "," + "alpha_z");
+            writerCSV.WriteLine("timestamp" + "," + "omega_x" + "," + "omega_y" + "," + "omega_z" + "," + "alpha_x" + "," + "alpha_y" + "," + "alpha_z");
+            //writerCSV.WriteLine("timestamp" + "," +  "alpha_x" + "," + "alpha_y" + "," + "alpha_z");
 
 
             // Establish the report interval
@@ -54,7 +74,8 @@ namespace ConsoleIMURecorder
             _gyrometer.ReportInterval = _gyroDesiredReportInterval;
 
 
-            _accelerometer.ReadingChanged += ReadingChanged;
+            _accelerometer.ReadingChanged += AcclReadingChanged;
+            _gyrometer.ReadingChanged += GyroReadingChanged;
             Console.WriteLine("Data Collecting ...");
             Console.ReadLine();
             writerCSV.Close();
