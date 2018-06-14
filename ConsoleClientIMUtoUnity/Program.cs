@@ -8,6 +8,7 @@ using System.IO;
 using System.Diagnostics;
 using System.Threading;
 using Newtonsoft.Json;
+using System.Net.Sockets;
 
 namespace ConsoleClientIMUtoUnity
 {
@@ -96,72 +97,83 @@ namespace ConsoleClientIMUtoUnity
             // create a tcp client
             TCPClientIMU.TCPClientIMU client = new TCPClientIMU.TCPClientIMU("127.0.0.1", 9001);
 
-            Task.Run(async () =>
+
+
+            while (true)
             {
-                await client.ConnectAsync();
-            }).Wait();
-
-
-            
-
-
-
-
-            Random rng = new Random();
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
-
-            if (_accelerometer != null)
-            {
-                Thread IMUDataThread = new Thread(() => IMUDataPoll());
-                IMUDataThread.Start();
-            }
-
-
-
-
-            Task.Run(async () =>
-            {
-                while (true)
+                Task.Run(async () =>
                 {
-                    var elapsed = stopwatch.Elapsed;
-                    stopwatch.Restart();
+                    await client.ConnectAsync();
+                }).Wait();
 
-                    DataPointViewModel dataPoint = null;
-                    if (_accelerometer != null)
-                    {
-                        /*
-                        dataPoint = new DataPointViewModel()
-                        {
-                            readingAccX = _accelerometer.GetCurrentReading().AccelerationX,
-                            readingAccY = _accelerometer.GetCurrentReading().AccelerationY,
-                            readingAccZ = _accelerometer.GetCurrentReading().AccelerationZ,
-                            readingGyroX = _gyrometer.GetCurrentReading().AngularVelocityX,
-                            readingGyroY = _gyrometer.GetCurrentReading().AngularVelocityY,
-                            readingGyroZ = _gyrometer.GetCurrentReading().AngularVelocityZ
-                        };
-                        */
-                    }
-                    else
-                    {
-                        dataPoint = new DataPointViewModel()
-                        {
-                            readingAccX = elapsed.TotalMilliseconds,
-                            readingAccY = rng.NextDouble(),
-                            readingAccZ = rng.NextDouble(),
-                            readingGyroX = rng.NextDouble(),
-                            readingGyroY = rng.NextDouble(),
-                            readingGyroZ = rng.NextDouble()
-                        };
-                        Thread.Sleep(5);
-                    }
 
-                    var message = JsonConvert.SerializeObject(dataPoint);
-                    Console.WriteLine("Sending message {0}", message);
 
-                    await client.SendMessageToServerTaskAsync(message);
+
+
+
+
+                Random rng = new Random();
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
+
+                if (_accelerometer != null)
+                {
+                    Thread IMUDataThread = new Thread(() => IMUDataPoll());
+                    IMUDataThread.Start();
                 }
-            }).Wait();
+
+
+
+                try
+                {
+                    Task.Run(async () =>
+                    {
+                        while (true)
+                        {
+                            var elapsed = stopwatch.Elapsed;
+                            stopwatch.Restart();
+
+                            DataPointViewModel dataPoint = null;
+                            if (_accelerometer != null)
+                            {
+                            /*
+                            dataPoint = new DataPointViewModel()
+                            {
+                                readingAccX = _accelerometer.GetCurrentReading().AccelerationX,
+                                readingAccY = _accelerometer.GetCurrentReading().AccelerationY,
+                                readingAccZ = _accelerometer.GetCurrentReading().AccelerationZ,
+                                readingGyroX = _gyrometer.GetCurrentReading().AngularVelocityX,
+                                readingGyroY = _gyrometer.GetCurrentReading().AngularVelocityY,
+                                readingGyroZ = _gyrometer.GetCurrentReading().AngularVelocityZ
+                            };
+                            */
+                            }
+                            else
+                            {
+                                dataPoint = new DataPointViewModel()
+                                {
+                                    readingAccX = elapsed.TotalMilliseconds,
+                                    readingAccY = rng.NextDouble(),
+                                    readingAccZ = rng.NextDouble(),
+                                    readingGyroX = rng.NextDouble(),
+                                    readingGyroY = rng.NextDouble(),
+                                    readingGyroZ = rng.NextDouble()
+                                };
+                                Thread.Sleep(5);
+                            }
+
+                            var message = JsonConvert.SerializeObject(dataPoint);
+                            Console.WriteLine("Sending message {0}", message);
+
+                            await client.SendMessageToServerTaskAsync(message);
+                        }
+                    }).Wait();
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Exception: {0}, reconnect...", e);
+                }
+            }
         }
     }
 }

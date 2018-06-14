@@ -32,16 +32,23 @@ namespace TCPClientIMU
         }
 
         public async Task SendMessageToServerTaskAsync(string message) {
-            // Translate the passed message into ASCII and store it as a Byte array.
-            Byte[] data = System.Text.Encoding.ASCII.GetBytes(message);
+            try
+            {
+                // Translate the passed message into ASCII and store it as a Byte array.
+                Byte[] data = System.Text.Encoding.ASCII.GetBytes(message);
 
-            // Get a client stream for reading and writing.
-            NetworkStream stream = client.GetStream();
+                // Get a client stream for reading and writing.
+                NetworkStream stream = client.GetStream();
 
-            // Send the message to the connected TcpServer. 
-            await stream.WriteAsync(data, 0, data.Length);
+                // Send the message to the connected TcpServer. 
+                await stream.WriteAsync(data, 0, data.Length);
 
-            Console.WriteLine("Sent: {0}", message);
+                Console.WriteLine("Sent: {0}", message);
+            }
+            catch (SocketException e)
+            {
+                Console.WriteLine("SocketException: {0}", e);
+            }
         }
 
     }
