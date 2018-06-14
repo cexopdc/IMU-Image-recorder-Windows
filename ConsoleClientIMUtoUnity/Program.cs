@@ -94,7 +94,18 @@ namespace ConsoleClientIMUtoUnity
         static void Main(string[] args)
         {
             // create a tcp client
-            TCPClient.TCPClient client = new TCPClient.TCPClient("127.0.0.1", 9001);
+            TCPClientIMU.TCPClientIMU client = new TCPClientIMU.TCPClientIMU("127.0.0.1", 9001);
+
+            Task.Run(async () =>
+            {
+                await client.ConnectAsync();
+            }).Wait();
+
+
+            
+
+
+
 
             Random rng = new Random();
             Stopwatch stopwatch = new Stopwatch();
@@ -105,6 +116,8 @@ namespace ConsoleClientIMUtoUnity
                 Thread IMUDataThread = new Thread(() => IMUDataPoll());
                 IMUDataThread.Start();
             }
+
+
 
 
             Task.Run(async () =>
@@ -140,10 +153,12 @@ namespace ConsoleClientIMUtoUnity
                             readingGyroY = rng.NextDouble(),
                             readingGyroZ = rng.NextDouble()
                         };
+                        Thread.Sleep(5);
                     }
 
                     var message = JsonConvert.SerializeObject(dataPoint);
                     Console.WriteLine("Sending message {0}", message);
+
                     await client.SendMessageToServerTaskAsync(message);
                 }
             }).Wait();

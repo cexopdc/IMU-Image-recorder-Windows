@@ -57,9 +57,9 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\TCPClient\TCPClient.csproj">
+    <ProjectReference Include="..\TCPClient\TCPClientIMU.csproj">
       <Project>{17f27053-6d1c-4c10-83e9-e3fc9349fc2b}</Project>
-      <Name>TCPClient</Name>
+      <Name>TCPClientIMU</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

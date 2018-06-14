@@ -12,7 +12,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleClientIMUtoUnity", "
 		{17F27053-6D1C-4C10-83E9-E3FC9349FC2B} = {17F27053-6D1C-4C10-83E9-E3FC9349FC2B}
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TCPClient", "TCPClient\TCPClient.csproj", "{17F27053-6D1C-4C10-83E9-E3FC9349FC2B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TCPClientIMU", "TCPClient\TCPClientIMU.csproj", "{17F27053-6D1C-4C10-83E9-E3FC9349FC2B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
