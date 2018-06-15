@@ -42,7 +42,7 @@ namespace TCPClientIMU
 
                 // Send the message to the connected TcpServer. 
                 await stream.WriteAsync(data, 0, data.Length);
-
+                await stream.FlushAsync();
                 Console.WriteLine("Sent: {0}", message);
             }
             catch (SocketException e)
