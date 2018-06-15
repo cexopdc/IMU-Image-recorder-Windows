@@ -45,10 +45,12 @@ namespace ConsoleClientIMUtoUnity
             readingGyro = e.Reading;
             //GyrometerReading readingGyro = _gyrometer.GetCurrentReading();
 
+            /*
             string timeStamp = nanoTime().ToString();
             writerCSV.WriteLine(timeStamp + ","
                 + readingGyro.AngularVelocityX + "," + readingGyro.AngularVelocityY + "," + readingGyro.AngularVelocityZ
                 + "," + readingAccl.AccelerationX + "," + readingAccl.AccelerationY + "," + readingAccl.AccelerationZ);
+            */
 
             dataPoint = new DataPointViewModel()
             {
@@ -63,11 +65,10 @@ namespace ConsoleClientIMUtoUnity
         }
 
         static private void IMUDataPoll() {
-            Accelerometer _accelerometer = Accelerometer.GetDefault(AccelerometerReadingType.Standard); ;
-            _gyrometer = Gyrometer.GetDefault();
             uint _acclDesiredReportInterval = _accelerometer.MinimumReportInterval;
             uint _gyroDesiredReportInterval = _gyrometer.MinimumReportInterval;
 
+            /*
             // make timestamped folder for this record session
             string pathParent = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().CodeBase);
             string folderPath = System.IO.Path.Combine(pathParent, "IMUData");
@@ -79,7 +80,7 @@ namespace ConsoleClientIMUtoUnity
             writerCSV = new StreamWriter(new FileStream(new Uri(filePath).LocalPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 4096, useAsync: true));
             writerCSV.WriteLine("timestamp" + "," + "omega_x" + "," + "omega_y" + "," + "omega_z" + "," + "alpha_x" + "," + "alpha_y" + "," + "alpha_z");
             //writerCSV.WriteLine("timestamp" + "," +  "alpha_x" + "," + "alpha_y" + "," + "alpha_z");
-
+            */
 
             // Establish the report interval
             _accelerometer.ReportInterval = _acclDesiredReportInterval;
@@ -87,7 +88,7 @@ namespace ConsoleClientIMUtoUnity
 
             _accelerometer.ReadingChanged += AcclReadingChanged;
             _gyrometer.ReadingChanged += GyroReadingChanged;
-            Console.WriteLine("Data Collecting ...");
+            //Console.WriteLine("Data Collecting ...");
             Console.ReadLine();
             writerCSV.Close();
         }
@@ -97,7 +98,8 @@ namespace ConsoleClientIMUtoUnity
             // create a tcp client
             TCPClientIMU.TCPClientIMU client = new TCPClientIMU.TCPClientIMU("127.0.0.1", 9001);
 
-
+            _accelerometer = Accelerometer.GetDefault(AccelerometerReadingType.Standard);
+            _gyrometer = Gyrometer.GetDefault();
 
             while (true)
             {
@@ -133,7 +135,6 @@ namespace ConsoleClientIMUtoUnity
                             var elapsed = stopwatch.Elapsed;
                             stopwatch.Restart();
 
-                            DataPointViewModel dataPoint = null;
                             if (_accelerometer != null)
                             {
                             /*
