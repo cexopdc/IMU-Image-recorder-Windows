@@ -20,6 +20,13 @@ namespace ConsoleClientIMUtoUnity
         static GyrometerReading readingGyro;
         static AccelerometerReading readingAccl;
         static DataPointViewModel dataPoint;
+        static int BUFFER_SIZE = 4;
+        static int bufIndex = 0;
+        static bool BUFFER_MODE = true;
+        static DataPointViewModel[] dataPointsBuff = new DataPointViewModel[BUFFER_SIZE];
+        static long pktCount = 0;
+        static long startTime = 0;
+        static object bufLock = new System.Object();
 
         private static long nanoTime()
         {
@@ -54,12 +61,12 @@ namespace ConsoleClientIMUtoUnity
 
             dataPoint = new DataPointViewModel()
             {
-                readingAccX = readingAccl.AccelerationX,
-                readingAccY = readingAccl.AccelerationY,
-                readingAccZ = readingAccl.AccelerationZ,
-                readingGyroX = readingGyro.AngularVelocityX,
-                readingGyroY = readingGyro.AngularVelocityY,
-                readingGyroZ = readingGyro.AngularVelocityZ
+                aX = readingAccl.AccelerationX,
+                aY = readingAccl.AccelerationY,
+                aZ = readingAccl.AccelerationZ,
+                gX = readingGyro.AngularVelocityX,
+                gY = readingGyro.AngularVelocityY,
+                gZ = readingGyro.AngularVelocityZ
             };
 
         }
@@ -86,11 +93,12 @@ namespace ConsoleClientIMUtoUnity
             _accelerometer.ReportInterval = _acclDesiredReportInterval;
             _gyrometer.ReportInterval = _gyroDesiredReportInterval;
 
+
             _accelerometer.ReadingChanged += AcclReadingChanged;
             _gyrometer.ReadingChanged += GyroReadingChanged;
             //Console.WriteLine("Data Collecting ...");
             Console.ReadLine();
-            writerCSV.Close();
+            //writerCSV.Close();
         }
 
         static void Main(string[] args)
@@ -135,38 +143,72 @@ namespace ConsoleClientIMUtoUnity
                             var elapsed = stopwatch.Elapsed;
                             stopwatch.Restart();
 
-                            if (_accelerometer != null)
+                            if (_accelerometer == null)
+                            { 
+                                dataPoint = new DataPointViewModel()
+                                {
+                                    aX = elapsed.TotalMilliseconds,
+                                    aY = rng.NextDouble(),
+                                    aZ = rng.NextDouble(),
+                                    gX = rng.NextDouble(),
+                                    gY = rng.NextDouble(),
+                                    gZ = rng.NextDouble()
+                                };                
+                            }
+
+                            if (BUFFER_MODE)
                             {
-                            /*
-                            dataPoint = new DataPointViewModel()
-                            {
-                                readingAccX = _accelerometer.GetCurrentReading().AccelerationX,
-                                readingAccY = _accelerometer.GetCurrentReading().AccelerationY,
-                                readingAccZ = _accelerometer.GetCurrentReading().AccelerationZ,
-                                readingGyroX = _gyrometer.GetCurrentReading().AngularVelocityX,
-                                readingGyroY = _gyrometer.GetCurrentReading().AngularVelocityY,
-                                readingGyroZ = _gyrometer.GetCurrentReading().AngularVelocityZ
-                            };
-                            */
+                                lock (bufLock)
+                                {
+                                    if (dataPoint != null)
+                                    {
+                                        dataPointsBuff[bufIndex] = dataPoint;
+                                        bufIndex++;
+                                    }
+                                }
+                                if (bufIndex == BUFFER_SIZE)
+                                {
+                                    var message = JsonConvert.SerializeObject(dataPointsBuff);
+                                    //Console.WriteLine("Sending message {0}", message);
+                                    bufIndex = 0;
+                                    await client.SendMessageToServerTaskAsync(message);
+
+                                    if (pktCount == 0) startTime = nanoTime();
+                                    pktCount++;
+                                    //Debug.Log("updateCount: " + updateCount);
+
+                                    if (pktCount % 100 == 0)
+                                    {
+                                        long currentTime = nanoTime();
+                                        double timeElapsed = (currentTime - startTime) / 1000000000.0f;
+                                        Console.WriteLine("IMU sending freq: " + 100 / timeElapsed * BUFFER_SIZE);
+                                        startTime = currentTime;
+                                    }
+                                }
+
                             }
                             else
                             {
-                                dataPoint = new DataPointViewModel()
+                                if (pktCount == 0) startTime = nanoTime();
+                                pktCount++;
+                                //Debug.Log("updateCount: " + updateCount);
+
+                                if (pktCount % 1000 == 0)
                                 {
-                                    readingAccX = elapsed.TotalMilliseconds,
-                                    readingAccY = rng.NextDouble(),
-                                    readingAccZ = rng.NextDouble(),
-                                    readingGyroX = rng.NextDouble(),
-                                    readingGyroY = rng.NextDouble(),
-                                    readingGyroZ = rng.NextDouble()
-                                };
-                                Thread.Sleep(5);
+                                    long currentTime = nanoTime();
+                                    double timeElapsed = (currentTime - startTime) / 1000000000.0f;
+                                    Console.WriteLine("IMU pkt freq: " + 1000 / timeElapsed);
+                                    startTime = currentTime;
+                                }
+
+                                var message = JsonConvert.SerializeObject(dataPoint);
+                                //Console.WriteLine("Sending message {0}", message);
+
+                                await client.SendMessageToServerTaskAsync(message);
                             }
 
-                            var message = JsonConvert.SerializeObject(dataPoint);
-                            Console.WriteLine("Sending message {0}", message);
-
-                            await client.SendMessageToServerTaskAsync(message);
+                            Thread.Sleep(3);
+                            
                         }
                     }).Wait();
                 }

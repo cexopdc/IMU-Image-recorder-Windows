@@ -8,12 +8,12 @@ namespace ConsoleClientIMUtoUnity
 {
     public class DataPointViewModel
     {
-        public double readingAccX;
-        public double readingAccY;
-        public double readingAccZ;
-        public double readingGyroX;
-        public double readingGyroY;
-        public double readingGyroZ;
+        public double aX;
+        public double aY;
+        public double aZ;
+        public double gX;
+        public double gY;
+        public double gZ;
     }
 
 }
